@@ -4,22 +4,14 @@
 
 需要输入数据库配置和文件夹路径示例：
 
-xpath="/home/user/下载/词云项目/data/未命名文件夹/未命名文件夹"
-
-#xpath='C:/Users/flyminer/Desktop/新建文件夹'
+xpath="/home/user/下载"
 
 sql_path={"host":"localhost",
-
           "user":"root",
-	
           "port":3306,
-	
           "password":"123456",
-	
           "db":"词云项目2",
-	
           "charset" : 'utf8'
-	
           }
 	
 a=Excel_Msql(sql_path,xpath)
