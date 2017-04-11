@@ -19,8 +19,23 @@ def te(str):
     str = str.replace("[", "")
     str = str.replace("]", "")
     str = str.replace(":", "")
+    str = str.replace ("+" , "")
     str = str.replace("\n", "")
     return str
+#去除字符串中的特殊字符，避免msql的命名问题
+def insert_mysql( table_name2 , cursor , sql , parameter_list , ret ):
+    try:
+        cursor.execute (sql , parameter_list)
+    except mysql.connector.errors.ProgrammingError as e:
+        print (e)
+        return -1
+    except mysql.connector.errors.DataError as e:
+        m = re.search ("'(.*)'" , str (e))
+        str_need_modify = m.group (0)
+        str_need_modify = str_need_modify[1:(len (str_need_modify) - 1)]
+        sql0 = "alter table " + table_name2 + " modify column " + str_need_modify + " text"
+        cursor.execute (sql0)
+        insert_mysql (table_name2 , cursor , sql , parameter_list , ret)
 
 class Excel_Msql:
     def __init__(self,sqlconfig,filepath):
@@ -28,13 +43,15 @@ class Excel_Msql:
         self.path=filepath
         self.path_list = []
         self.table_list = []
+
     def getfile(self):
         for file_name in os.listdir(self.path):
             if os.path.isdir(os.path.join(self.path, file_name)):
                 '''get the files in sub folder recursively'''
-                tmp_lists = getFilesList(os.path.join(self.path, file_name))
-                self.path_list.extend(tmp_lists[0])
-                self.table_list.extend(tmp_lists[1])
+                son_filepath=Excel_Msql(self.fig,os.path.join(self.path, file_name))
+                son_filepath.getfile()
+                self.path_list.extend(son_filepath.path_list)
+                self.table_list.extend(son_filepath.table_list)
             else:
                 self.path_list.append(os.path.join(self.path, file_name))
                 '''convert file name to mysql table name'''
@@ -114,30 +131,7 @@ class Excel_Msql:
                                     meta_data = sheet.cell(row, col).value
                                 parameter_list.append(meta_data)
                             # cursor.execute(sql, parameter_list)
-                            try:
-                                cursor.execute (sql , parameter_list)
-                            except mysql.connector.errors.ProgrammingError as e:
-                                print (e)
-                                return -1
-                            except mysql.connector.errors.DataError as e:
-                                m = re.search ("'(.*)'" , str (e))
-                                str_need_modify = m.group (0)
-                                str_need_modify = str_need_modify[1:(len (str_need_modify) - 1)]
-                                sql0 = "alter table " + table_name2 + " modify column " + str_need_modify + " text"
-                                cursor.execute (sql0)
-                                try:
-                                    cursor.execute (sql , parameter_list)
-                                except mysql.connector.errors.ProgrammingError as e:
-                                    print (e)
-                                    return -1
-                                except mysql.connector.errors.DataError as e:
-                                    m = re.search ("'(.*)'" , str (e))
-                                    str_need_modify = m.group (0)
-                                    str_need_modify = str_need_modify[1:(len (str_need_modify) - 1)]
-                                    sql0 = "alter table " + table_name2 + " modify column " + str_need_modify + " text"
-                                    cursor.execute (sql0)
-                                    insert_mysql (table_name2 , cursor , sql , parameter_list , ret)
-                                # 数据插入，耦合部分过长数据导致的不兼容
+                            insert_mysql (table_name2 , cursor , sql , parameter_list , ret)
                             parameter_list = []
                             ret += 1
                     except mysql.connector.errors.ProgrammingError as e:
@@ -182,15 +176,13 @@ class Excel_Msql:
             return -1
 
 if __name__=='__main__':
-    xpath="/home/user/下载/词云项目/data/未命名文件夹/未命名文件夹"
-    #xpath='C:/Users/flyminer/Desktop/新建文件夹'
+    xpath="/home/user/文档/111"
     sql_path={"host":"localhost",
               "user":"root",
               "port":3306,
               "password":"123456",
-              "db":"词云项目2",
+              "db":"移动考试",
               "charset" : 'utf8'
               }
     a=Excel_Msql(sql_path,xpath)
     a.datahelper()
-
